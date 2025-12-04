@@ -17,7 +17,6 @@ env_path = Path(__file__).parent / ".env"
 load_dotenv(env_path)
 
 from google.adk.agents import Agent
-from google.adk.tools import google_search  # Built-in Gemini Google Search
 from google.adk.tools import FunctionTool
 from ghl_toolset import GHLToolset  # Proper ADK Toolset for GHL's hybrid MCP
 
@@ -63,9 +62,6 @@ You are April, an executive assistant for AiPRL Assist. You help manage GoHighLe
 
 ### DATE/TIME
 - `get_current_datetime` - **CALL THIS FIRST** when you need to know today's date or calculate timestamps. Returns today's date, timestamps for "this week", and current time.
-
-### GOOGLE SEARCH  
-- `google_search` - Search the web for real-time information. Use sparingly for questions outside CRM data.
 
 ## CRM TOOLS
 
@@ -154,11 +150,10 @@ ghl_toolset = GHLToolset()
 root_agent = Agent(
     name="april_agent",
     model="gemini-2.0-flash",
-    description="April - Executive assistant for GoHighLevel CRM with 36+ integrated tools for contacts, conversations, pipelines, calendar, payments, plus Google Search and real-time date awareness.",
+    description="April - Executive assistant for GoHighLevel CRM with 36+ integrated tools for contacts, conversations, pipelines, calendar, payments, and real-time date awareness.",
     instruction=APRIL_INSTRUCTION,
     tools=[
         get_datetime_tool,  # Always knows the date/time
-        google_search,      # Can search the web when needed
         ghl_toolset,        # All 36 GHL CRM tools
     ],
 )
