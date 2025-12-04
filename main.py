@@ -433,10 +433,14 @@ async def generate_sse_events(user_id: str, session_id: str, message: str) -> As
                 continue
                 
     except Exception as e:
+        import traceback
+        error_msg = str(e) or f"{type(e).__name__}"
+        print(f"SSE Error: {type(e).__name__}: {e}")
+        traceback.print_exc()
         error_data = {
             "error": True,
-            "message": str(e),
-            "content": {"parts": [{"text": f"Error: {str(e)}"}]}
+            "message": error_msg,
+            "content": {"parts": [{"text": f"Error: {error_msg}"}]}
         }
         yield f"data: {json.dumps(error_data)}\n\n"
 
