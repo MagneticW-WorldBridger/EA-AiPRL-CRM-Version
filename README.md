@@ -6,7 +6,7 @@
 
 *The Revolutionary AI Executive Assistant powered by Google ADK + GoHighLevel MCP*
 
-**Version 2.0.0** | December 2024 | **🎉 MAJOR RELEASE**
+**Version 2.0.0** | December 2025 | **🎉 MAJOR RELEASE**
 
 [![Railway](https://img.shields.io/badge/Deployed%20on-Railway-purple)](https://railway.app)
 [![Google ADK](https://img.shields.io/badge/Powered%20by-Google%20ADK-blue)](https://google.github.io/adk-docs/)
@@ -448,6 +448,6 @@ We turned GoHighLevel's non-standard MCP into a beautiful, working ADK toolset.
 
 ---
 
-**Version 2.0.0** | December 2024
+**Version 2.0.0** | December 2025
 
 </div>
