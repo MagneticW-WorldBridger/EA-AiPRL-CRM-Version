@@ -2,152 +2,235 @@
  * EventFeed - LIVE STREAMING Activity Display
  * Shows REAL tool calls as they happen - not fake thinking!
  * 
- * Each GHL tool gets its own fun commercial verbiage
+ * Updated for NEW MCP tool names (ghl_calendars_*, ghl_contacts_*, etc.)
  */
 import { 
   Zap, Check, Users, Calendar, MessageSquare, Target, MapPin, 
   CreditCard, Search, Tag, FileText, Sparkles, Rocket, Coffee,
-  Bell, Mail, Phone, Briefcase, Star, Clock, Loader2
+  Bell, Mail, Phone, Briefcase, Star, Clock, Loader2, Globe,
+  FileEdit, Image, Share2, BarChart3
 } from 'lucide-react'
 
-// 🎯 FUN COMMERCIAL VERBIAGE FOR EACH TOOL
+// 🎯 FUN COMMERCIAL VERBIAGE FOR EACH TOOL - NEW MCP NAMES
 const TOOL_MESSAGES = {
-  // Calendar Tools
-  'ghl_get_calendar_events': {
+  // ⏰ DateTime Tool
+  'get_current_datetime': {
+    calling: "🕐 Checking today's date...",
+    complete: "📆 Got the time!",
+    icon: Clock,
+    color: 'violet'
+  },
+
+  // 📅 Calendar Tools
+  'ghl_calendars_get_calendar_events': {
     calling: "📅 Checking your schedule...",
     complete: "✨ Calendar loaded!",
     icon: Calendar,
     color: 'coral'
   },
-  'ghl_get_appointment_notes': {
+  'ghl_calendars_get_appointment_notes': {
     calling: "📝 Grabbing meeting notes...",
     complete: "📋 Notes ready!",
     icon: FileText,
     color: 'violet'
   },
   
-  // Contact Tools  
-  'ghl_get_contact': {
+  // 👥 Contact Tools  
+  'ghl_contacts_get_contact': {
     calling: "🔍 Pulling up that contact...",
     complete: "👤 Got 'em!",
     icon: Users,
     color: 'teal'
   },
-  'ghl_get_contacts': {
+  'ghl_contacts_get_contacts': {
     calling: "🔎 Searching your contacts...",
     complete: "📇 Found matches!",
     icon: Search,
     color: 'teal'
   },
-  'ghl_create_contact': {
+  'ghl_contacts_create_contact': {
     calling: "✨ Creating new contact...",
     complete: "🎉 Contact added to CRM!",
     icon: Users,
     color: 'green'
   },
-  'ghl_update_contact': {
+  'ghl_contacts_update_contact': {
     calling: "✏️ Updating contact info...",
     complete: "✅ Contact updated!",
     icon: Users,
     color: 'blue'
   },
-  'ghl_upsert_contact': {
+  'ghl_contacts_upsert_contact': {
     calling: "🔄 Syncing contact...",
     complete: "✅ Contact synced!",
     icon: Users,
     color: 'blue'
   },
-  'ghl_add_tags': {
+  'ghl_contacts_add_tags': {
     calling: "🏷️ Adding tags...",
     complete: "🏷️ Tags applied!",
     icon: Tag,
     color: 'violet'
   },
-  'ghl_remove_tags': {
+  'ghl_contacts_remove_tags': {
     calling: "🏷️ Removing tags...",
     complete: "✂️ Tags removed!",
     icon: Tag,
     color: 'coral'
   },
-  'ghl_get_contact_tasks': {
+  'ghl_contacts_get_all_tasks': {
     calling: "📋 Fetching tasks...",
     complete: "✅ Tasks loaded!",
     icon: FileText,
     color: 'teal'
   },
   
-  // Conversation Tools
-  'ghl_search_conversations': {
+  // 💬 Conversation Tools
+  'ghl_conversations_search_conversation': {
     calling: "💬 Searching messages...",
     complete: "📨 Conversations found!",
     icon: MessageSquare,
     color: 'blue'
   },
-  'ghl_get_messages': {
+  'ghl_conversations_get_messages': {
     calling: "📥 Loading message history...",
     complete: "💬 Messages ready!",
     icon: Mail,
     color: 'blue'
   },
-  'ghl_send_message': {
+  'ghl_conversations_send_a_new_message': {
     calling: "📤 Sending your message...",
     complete: "✈️ Message sent!",
     icon: Phone,
     color: 'green'
   },
   
-  // Opportunity Tools
-  'ghl_get_pipelines': {
+  // 💰 Opportunity Tools
+  'ghl_opportunities_get_pipelines': {
     calling: "🎯 Loading your pipelines...",
     complete: "📊 Pipeline overview ready!",
     icon: Target,
     color: 'coral'
   },
-  'ghl_search_opportunities': {
+  'ghl_opportunities_search_opportunity': {
     calling: "💰 Searching deals...",
     complete: "🎯 Opportunities found!",
     icon: Briefcase,
     color: 'coral'
   },
-  'ghl_get_opportunity': {
+  'ghl_opportunities_get_opportunity': {
     calling: "📈 Pulling deal details...",
     complete: "💼 Deal info loaded!",
     icon: Target,
     color: 'coral'
   },
-  'ghl_update_opportunity': {
+  'ghl_opportunities_update_opportunity': {
     calling: "📝 Updating deal...",
     complete: "🚀 Deal updated!",
     icon: Star,
     color: 'gold'
   },
   
-  // Location Tools
-  'ghl_get_location': {
+  // 📍 Location Tools
+  'ghl_locations_get_location': {
     calling: "📍 Getting location info...",
     complete: "🏢 Location loaded!",
     icon: MapPin,
     color: 'teal'
   },
-  'ghl_get_custom_fields': {
+  'ghl_locations_get_custom_fields': {
     calling: "⚙️ Loading custom fields...",
     complete: "🔧 Fields ready!",
     icon: FileText,
     color: 'violet'
   },
   
-  // Payment Tools
-  'ghl_get_order': {
+  // 💳 Payment Tools
+  'ghl_payments_get_order_by_id': {
     calling: "🧾 Fetching order details...",
     complete: "💳 Order loaded!",
     icon: CreditCard,
     color: 'green'
   },
-  'ghl_list_transactions': {
+  'ghl_payments_list_transactions': {
     calling: "💸 Loading transactions...",
     complete: "📊 Transactions ready!",
     icon: CreditCard,
     color: 'green'
+  },
+
+  // 📧 Email Tools
+  'ghl_emails_fetch_template': {
+    calling: "📧 Fetching email templates...",
+    complete: "✉️ Templates loaded!",
+    icon: Mail,
+    color: 'blue'
+  },
+  'ghl_emails_create_template': {
+    calling: "✨ Creating email template...",
+    complete: "📧 Template created!",
+    icon: Mail,
+    color: 'green'
+  },
+
+  // 📝 Blog Tools
+  'ghl_blogs_get_blogs': {
+    calling: "📰 Loading blogs...",
+    complete: "📝 Blogs ready!",
+    icon: FileEdit,
+    color: 'violet'
+  },
+  'ghl_blogs_get_blog_post': {
+    calling: "📄 Fetching blog posts...",
+    complete: "📝 Posts loaded!",
+    icon: FileEdit,
+    color: 'violet'
+  },
+  'ghl_blogs_create_blog_post': {
+    calling: "✍️ Creating blog post...",
+    complete: "📰 Blog published!",
+    icon: FileEdit,
+    color: 'green'
+  },
+  'ghl_blogs_update_blog_post': {
+    calling: "✏️ Updating blog post...",
+    complete: "📝 Blog updated!",
+    icon: FileEdit,
+    color: 'blue'
+  },
+
+  // 📱 Social Media Tools
+  'ghl_socialmediaposting_get_account': {
+    calling: "📱 Loading social accounts...",
+    complete: "📲 Accounts ready!",
+    icon: Share2,
+    color: 'blue'
+  },
+  'ghl_socialmediaposting_get_posts': {
+    calling: "📱 Fetching social posts...",
+    complete: "📲 Posts loaded!",
+    icon: Share2,
+    color: 'blue'
+  },
+  'ghl_socialmediaposting_create_post': {
+    calling: "✨ Creating social post...",
+    complete: "🚀 Post scheduled!",
+    icon: Share2,
+    color: 'green'
+  },
+  'ghl_socialmediaposting_get_social_media_statistics': {
+    calling: "📊 Pulling social analytics...",
+    complete: "📈 Stats ready!",
+    icon: BarChart3,
+    color: 'coral'
+  },
+  
+  // 🌐 Google Search
+  'google_search': {
+    calling: "🌐 Searching the web...",
+    complete: "🔍 Results found!",
+    icon: Globe,
+    color: 'blue'
   },
   
   // Fallback

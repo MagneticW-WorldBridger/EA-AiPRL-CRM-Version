@@ -1,43 +1,72 @@
 /**
  * ChatMessage - REVOLUTIONARY Message Display
  * Shows friendly tool badges with commercial verbiage
+ * 
+ * Updated for NEW MCP tool names (ghl_calendars_*, ghl_contacts_*, etc.)
  */
-import { User, Bot, Sparkles, Users, Calendar, MessageSquare, Target, MapPin, CreditCard, Tag, FileText, Phone, Briefcase, Settings } from 'lucide-react'
+import { User, Bot, Sparkles, Users, Calendar, MessageSquare, Target, MapPin, CreditCard, Tag, FileText, Phone, Briefcase, Settings, Clock, Mail, Globe, FileEdit, Share2, BarChart3, Search, Star } from 'lucide-react'
 
-// 🎯 FRIENDLY TOOL NAMES WITH EMOJIS
+// 🎯 FRIENDLY TOOL NAMES WITH EMOJIS - NEW MCP NAMES
 const TOOL_CONFIG = {
+  // DateTime
+  'get_current_datetime': { label: '🕐 Time Check', icon: Clock, color: 'violet' },
+
   // Calendar
-  'ghl_get_calendar_events': { label: '📅 Calendar Check', icon: Calendar, color: 'coral' },
-  'ghl_get_appointment_notes': { label: '📝 Meeting Notes', icon: FileText, color: 'violet' },
+  'ghl_calendars_get_calendar_events': { label: '📅 Calendar Check', icon: Calendar, color: 'coral' },
+  'ghl_calendars_get_appointment_notes': { label: '📝 Meeting Notes', icon: FileText, color: 'violet' },
   
   // Contacts
-  'ghl_get_contact': { label: '👤 Contact Lookup', icon: Users, color: 'teal' },
-  'ghl_get_contacts': { label: '🔍 Contact Search', icon: Users, color: 'teal' },
-  'ghl_create_contact': { label: '✨ New Contact', icon: Users, color: 'green' },
-  'ghl_update_contact': { label: '✏️ Contact Update', icon: Users, color: 'blue' },
-  'ghl_upsert_contact': { label: '🔄 Contact Sync', icon: Users, color: 'blue' },
-  'ghl_add_tags': { label: '🏷️ Added Tags', icon: Tag, color: 'violet' },
-  'ghl_remove_tags': { label: '✂️ Tags Removed', icon: Tag, color: 'coral' },
-  'ghl_get_contact_tasks': { label: '✅ Task List', icon: FileText, color: 'teal' },
+  'ghl_contacts_get_contact': { label: '👤 Contact Lookup', icon: Users, color: 'teal' },
+  'ghl_contacts_get_contacts': { label: '🔍 Contact Search', icon: Search, color: 'teal' },
+  'ghl_contacts_create_contact': { label: '✨ New Contact', icon: Users, color: 'green' },
+  'ghl_contacts_update_contact': { label: '✏️ Contact Update', icon: Users, color: 'blue' },
+  'ghl_contacts_upsert_contact': { label: '🔄 Contact Sync', icon: Users, color: 'blue' },
+  'ghl_contacts_add_tags': { label: '🏷️ Added Tags', icon: Tag, color: 'violet' },
+  'ghl_contacts_remove_tags': { label: '✂️ Tags Removed', icon: Tag, color: 'coral' },
+  'ghl_contacts_get_all_tasks': { label: '✅ Task List', icon: FileText, color: 'teal' },
   
   // Conversations
-  'ghl_search_conversations': { label: '💬 Message Search', icon: MessageSquare, color: 'blue' },
-  'ghl_get_messages': { label: '📥 Messages', icon: MessageSquare, color: 'blue' },
-  'ghl_send_message': { label: '📤 Message Sent', icon: Phone, color: 'green' },
+  'ghl_conversations_search_conversation': { label: '💬 Message Search', icon: MessageSquare, color: 'blue' },
+  'ghl_conversations_get_messages': { label: '📥 Messages', icon: MessageSquare, color: 'blue' },
+  'ghl_conversations_send_a_new_message': { label: '📤 Message Sent', icon: Phone, color: 'green' },
   
   // Opportunities
-  'ghl_get_pipelines': { label: '🎯 Pipelines', icon: Target, color: 'coral' },
-  'ghl_search_opportunities': { label: '💰 Deal Search', icon: Briefcase, color: 'coral' },
-  'ghl_get_opportunity': { label: '📈 Deal Details', icon: Target, color: 'coral' },
-  'ghl_update_opportunity': { label: '🚀 Deal Updated', icon: Target, color: 'gold' },
+  'ghl_opportunities_get_pipelines': { label: '🎯 Pipelines', icon: Target, color: 'coral' },
+  'ghl_opportunities_search_opportunity': { label: '💰 Deal Search', icon: Briefcase, color: 'coral' },
+  'ghl_opportunities_get_opportunity': { label: '📈 Deal Details', icon: Target, color: 'coral' },
+  'ghl_opportunities_update_opportunity': { label: '🚀 Deal Updated', icon: Star, color: 'gold' },
   
   // Location
-  'ghl_get_location': { label: '📍 Location Info', icon: MapPin, color: 'teal' },
-  'ghl_get_custom_fields': { label: '⚙️ Custom Fields', icon: Settings, color: 'violet' },
+  'ghl_locations_get_location': { label: '📍 Location Info', icon: MapPin, color: 'teal' },
+  'ghl_locations_get_custom_fields': { label: '⚙️ Custom Fields', icon: Settings, color: 'violet' },
   
   // Payments
-  'ghl_get_order': { label: '🧾 Order Details', icon: CreditCard, color: 'green' },
-  'ghl_list_transactions': { label: '💳 Transactions', icon: CreditCard, color: 'green' },
+  'ghl_payments_get_order_by_id': { label: '🧾 Order Details', icon: CreditCard, color: 'green' },
+  'ghl_payments_list_transactions': { label: '💳 Transactions', icon: CreditCard, color: 'green' },
+
+  // Emails
+  'ghl_emails_fetch_template': { label: '📧 Email Templates', icon: Mail, color: 'blue' },
+  'ghl_emails_create_template': { label: '✨ New Template', icon: Mail, color: 'green' },
+
+  // Blogs
+  'ghl_blogs_get_blogs': { label: '📰 Blogs', icon: FileEdit, color: 'violet' },
+  'ghl_blogs_get_blog_post': { label: '📝 Blog Posts', icon: FileEdit, color: 'violet' },
+  'ghl_blogs_create_blog_post': { label: '✍️ New Post', icon: FileEdit, color: 'green' },
+  'ghl_blogs_update_blog_post': { label: '✏️ Blog Update', icon: FileEdit, color: 'blue' },
+  'ghl_blogs_check_url_slug_exists': { label: '🔗 URL Check', icon: FileEdit, color: 'teal' },
+  'ghl_blogs_get_all_blog_authors_by_location': { label: '✍️ Authors', icon: Users, color: 'violet' },
+  'ghl_blogs_get_all_categories_by_location': { label: '🏷️ Categories', icon: Tag, color: 'violet' },
+
+  // Social Media
+  'ghl_socialmediaposting_get_account': { label: '📱 Social Accounts', icon: Share2, color: 'blue' },
+  'ghl_socialmediaposting_get_posts': { label: '📱 Social Posts', icon: Share2, color: 'blue' },
+  'ghl_socialmediaposting_get_post': { label: '📱 Post Details', icon: Share2, color: 'blue' },
+  'ghl_socialmediaposting_create_post': { label: '🚀 New Post', icon: Share2, color: 'green' },
+  'ghl_socialmediaposting_edit_post': { label: '✏️ Edit Post', icon: Share2, color: 'blue' },
+  'ghl_socialmediaposting_get_social_media_statistics': { label: '📊 Analytics', icon: BarChart3, color: 'coral' },
+
+  // Google Search
+  'google_search': { label: '🌐 Web Search', icon: Globe, color: 'blue' },
   
   // Fallback
   'default': { label: '⚡ Processed', icon: Sparkles, color: 'teal' }
