@@ -73,10 +73,22 @@ def _json_schema_to_gemini_schema(json_schema: Dict[str, Any]) -> types.Schema:
             prop_type = prop_schema.get("type", "string")
             prop_gemini_type = type_mapping.get(prop_type, types.Type.STRING)
             
-            properties[prop_name] = types.Schema(
-                type=prop_gemini_type,
-                description=prop_schema.get("description", ""),
-            )
+            # Handle array types - need to specify items
+            if prop_type == "array":
+                items_schema = prop_schema.get("items", {"type": "string"})
+                items_type = items_schema.get("type", "string") if isinstance(items_schema, dict) else "string"
+                items_gemini_type = type_mapping.get(items_type, types.Type.STRING)
+                
+                properties[prop_name] = types.Schema(
+                    type=types.Type.ARRAY,
+                    description=prop_schema.get("description", ""),
+                    items=types.Schema(type=items_gemini_type),
+                )
+            else:
+                properties[prop_name] = types.Schema(
+                    type=prop_gemini_type,
+                    description=prop_schema.get("description", ""),
+                )
     
     required = json_schema.get("required", [])
     
