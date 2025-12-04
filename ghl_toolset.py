@@ -7,13 +7,13 @@ GHL's MCP server uses a NON-STANDARD hybrid approach:
 - Returns SSE event streams in response body
 - Doesn't support standard MCP session initialization
 
-This module wraps GHL's HTTP API as a proper ADK BaseToolset.
+This module wraps GHL's HTTP API as a proper ADK BaseToolset with
+custom GHLTool class that properly exposes parameter schemas.
 """
 
 import json
-import asyncio
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union, Callable
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -22,11 +22,13 @@ load_dotenv(env_path)
 
 import httpx
 from pydantic import BaseModel
+from typing_extensions import override
 
 from google.adk.tools.base_tool import BaseTool
 from google.adk.tools.base_toolset import BaseToolset
-from google.adk.tools.function_tool import FunctionTool
+from google.adk.tools.tool_context import ToolContext
 from google.adk.agents.readonly_context import ReadonlyContext
+from google.genai import types
 
 
 # GHL MCP API Configuration
@@ -41,6 +43,51 @@ class GHLToolConfig(BaseModel):
     input_schema: Dict[str, Any]
 
 
+def _json_schema_to_gemini_schema(json_schema: Dict[str, Any]) -> types.Schema:
+    """
+    Convert a JSON Schema to a Gemini Schema.
+    
+    Based on how McpTool does it in mcp_tool.py
+    """
+    if not json_schema:
+        return types.Schema(type=types.Type.OBJECT, properties={})
+    
+    schema_type = json_schema.get("type", "object")
+    
+    # Map JSON Schema types to Gemini types
+    type_mapping = {
+        "string": types.Type.STRING,
+        "number": types.Type.NUMBER,
+        "integer": types.Type.INTEGER,
+        "boolean": types.Type.BOOLEAN,
+        "array": types.Type.ARRAY,
+        "object": types.Type.OBJECT,
+    }
+    
+    gemini_type = type_mapping.get(schema_type, types.Type.STRING)
+    
+    # Build properties for object types
+    properties = {}
+    if "properties" in json_schema:
+        for prop_name, prop_schema in json_schema["properties"].items():
+            prop_type = prop_schema.get("type", "string")
+            prop_gemini_type = type_mapping.get(prop_type, types.Type.STRING)
+            
+            properties[prop_name] = types.Schema(
+                type=prop_gemini_type,
+                description=prop_schema.get("description", ""),
+            )
+    
+    required = json_schema.get("required", [])
+    
+    return types.Schema(
+        type=gemini_type,
+        properties=properties if properties else None,
+        required=required if required else None,
+        description=json_schema.get("description", ""),
+    )
+
+
 async def _call_ghl_mcp(
     tool_name: str,
     arguments: Dict[str, Any],
@@ -50,16 +97,6 @@ async def _call_ghl_mcp(
 ) -> Dict[str, Any]:
     """
     Call a GHL MCP tool using their hybrid JSON-RPC/SSE format.
-    
-    Args:
-        tool_name: The GHL MCP tool name (e.g., "contacts_get-contacts")
-        arguments: Tool arguments
-        pit_token: GHL Private Integration Token
-        location_id: GHL Location ID
-        timeout: Request timeout in seconds
-        
-    Returns:
-        Parsed response from GHL
     """
     headers = {
         "Authorization": f"Bearer {pit_token}",
@@ -68,13 +105,21 @@ async def _call_ghl_mcp(
         "Accept": "application/json, text/event-stream",
     }
     
+    # Convert numeric timestamps to strings (GHL API requirement)
+    processed_args = {}
+    for key, value in arguments.items():
+        if key in ('query_startTime', 'query_endTime') and isinstance(value, (int, float)):
+            processed_args[key] = str(int(value))
+        else:
+            processed_args[key] = value
+    
     payload = {
         "jsonrpc": "2.0",
         "id": 1,
         "method": "tools/call",
         "params": {
             "name": tool_name,
-            "arguments": arguments
+            "arguments": processed_args
         }
     }
     
@@ -83,9 +128,9 @@ async def _call_ghl_mcp(
         
         if response.status_code != 200:
             return {
-                "status": "error",
-                "error": f"HTTP {response.status_code}",
-                "details": response.text[:500]
+                "success": False,
+                "error": f"HTTP {response.status_code}: {response.text[:500]}",
+                "status": response.status_code,
             }
         
         # Parse SSE response
@@ -111,13 +156,13 @@ async def _call_ghl_mcp(
                                             return json.loads(final_text)
                                     return inner_data
                                 except json.JSONDecodeError:
-                                    return {"status": "success", "data": inner_text}
-                        return {"status": "success", "data": data}
+                                    return {"success": True, "data": inner_text}
+                        return {"success": True, "data": data}
                     except json.JSONDecodeError:
                         continue
-            return {"status": "error", "raw": text}
+            return {"success": False, "error": "Failed to parse SSE response", "raw": text[:500]}
         else:
-            return {"status": "success", "data": response.json()}
+            return {"success": True, "data": response.json()}
 
 
 async def _list_ghl_tools(
@@ -168,36 +213,85 @@ async def _list_ghl_tools(
         return tools
 
 
-def _create_ghl_tool_function(
-    tool_config: GHLToolConfig,
-    pit_token: str,
-    location_id: str,
-):
-    """Create a callable function for a GHL tool."""
+class GHLTool(BaseTool):
+    """
+    A custom ADK Tool for GoHighLevel MCP tools.
     
-    async def tool_function(**kwargs) -> Dict[str, Any]:
-        """Dynamically generated GHL tool function."""
-        # GHL requires certain parameters as strings (timestamps, IDs)
-        processed_args = {}
-        for key, value in kwargs.items():
-            # Convert numeric timestamps to strings (GHL API requirement)
-            if key in ('query_startTime', 'query_endTime') and isinstance(value, (int, float)):
-                processed_args[key] = str(int(value))
-            else:
-                processed_args[key] = value
+    Unlike FunctionTool which inspects function signatures,
+    this tool explicitly provides the parameter schema from GHL's
+    inputSchema, ensuring the LLM knows exactly what parameters to use.
+    """
+    
+    def __init__(
+        self,
+        *,
+        tool_config: GHLToolConfig,
+        pit_token: str,
+        location_id: str,
+        require_confirmation: Union[bool, Callable[..., bool]] = False,
+    ):
+        """
+        Initialize a GHL Tool.
         
-        return await _call_ghl_mcp(
-            tool_name=tool_config.name,
-            arguments=processed_args,
-            pit_token=pit_token,
-            location_id=location_id,
+        Args:
+            tool_config: The GHL tool configuration with name, description, and schema
+            pit_token: GHL Private Integration Token
+            location_id: GHL Location ID
+            require_confirmation: Whether this tool requires user confirmation
+        """
+        # Create ADK-friendly name
+        tool_name = f"ghl_{tool_config.name.replace('-', '_')}"
+        
+        super().__init__(
+            name=tool_name,
+            description=tool_config.description or f"GHL tool: {tool_config.name}",
+        )
+        
+        self._tool_config = tool_config
+        self._pit_token = pit_token
+        self._location_id = location_id
+        self._require_confirmation = require_confirmation
+    
+    @override
+    def _get_declaration(self) -> types.FunctionDeclaration:
+        """
+        Get the function declaration with proper parameter schema.
+        
+        This is the key method that tells the LLM what parameters are available.
+        We convert GHL's JSON Schema to Gemini's Schema format.
+        """
+        # Convert the input schema to Gemini format
+        parameters = _json_schema_to_gemini_schema(self._tool_config.input_schema)
+        
+        return types.FunctionDeclaration(
+            name=self.name,
+            description=self.description,
+            parameters=parameters,
         )
     
-    # Set function metadata for ADK
-    tool_function.__name__ = f"ghl_{tool_config.name.replace('-', '_')}"
-    tool_function.__doc__ = tool_config.description or f"GHL tool: {tool_config.name}"
-    
-    return tool_function
+    @override
+    async def run_async(
+        self,
+        *,
+        args: Dict[str, Any],
+        tool_context: ToolContext,
+    ) -> Any:
+        """
+        Execute the GHL tool.
+        
+        Args:
+            args: Arguments from the LLM
+            tool_context: ADK tool context
+            
+        Returns:
+            Tool execution result
+        """
+        return await _call_ghl_mcp(
+            tool_name=self._tool_config.name,
+            arguments=args,
+            pit_token=self._pit_token,
+            location_id=self._location_id,
+        )
 
 
 class GHLToolset(BaseToolset):
@@ -205,7 +299,7 @@ class GHLToolset(BaseToolset):
     GoHighLevel Toolset for Google ADK.
     
     Connects to GHL's hybrid MCP server and exposes tools as ADK-compatible
-    FunctionTools. Handles GHL's non-standard JSON-RPC/SSE protocol.
+    GHLTools. Each tool properly exposes its parameter schema to the LLM.
     
     Usage:
         toolset = GHLToolset()  # Uses env vars
@@ -251,10 +345,10 @@ class GHLToolset(BaseToolset):
         readonly_context: Optional[ReadonlyContext] = None,
     ) -> List[BaseTool]:
         """
-        Get all GHL tools as ADK FunctionTools.
+        Get all GHL tools as ADK GHLTools.
         
         Fetches tool definitions from GHL MCP server and wraps them
-        as callable ADK tools.
+        as callable ADK tools with proper parameter schemas.
         """
         if self._tools_cache is not None:
             return self._tools_cache
@@ -266,7 +360,7 @@ class GHLToolset(BaseToolset):
             timeout=self._timeout,
         )
         
-        # Convert to ADK FunctionTools
+        # Convert to ADK GHLTools (with proper schemas!)
         tools = []
         for config in tool_configs:
             # Apply filter if specified (use parent's tool_filter)
@@ -274,15 +368,12 @@ class GHLToolset(BaseToolset):
                 if isinstance(self.tool_filter, list) and config.name not in self.tool_filter:
                     continue
             
-            # Create the tool function
-            func = _create_ghl_tool_function(
+            # Create custom GHLTool with proper schema
+            tool = GHLTool(
                 tool_config=config,
                 pit_token=self._pit_token,
                 location_id=self._location_id,
             )
-            
-            # Wrap as FunctionTool
-            tool = FunctionTool(func=func)
             tools.append(tool)
         
         self._tools_cache = tools
@@ -305,45 +396,3 @@ def create_ghl_toolset(
         location_id=location_id,
         tool_filter=tool_filter,
     )
-
-
-def create_ghl_contacts_toolset() -> GHLToolset:
-    """Pre-configured toolset for contact operations only."""
-    return GHLToolset(tool_filter=[
-        "contacts_get-contacts",
-        "contacts_get-contact",
-        "contacts_create-contact",
-        "contacts_update-contact",
-        "contacts_upsert-contact",
-        "contacts_add-tags",
-        "contacts_remove-tags",
-        "contacts_get-all-tasks",
-    ])
-
-
-def create_ghl_crm_toolset() -> GHLToolset:
-    """Pre-configured toolset for full CRM operations."""
-    return GHLToolset(tool_filter=[
-        # Contacts
-        "contacts_get-contacts",
-        "contacts_get-contact",
-        "contacts_create-contact",
-        "contacts_update-contact",
-        "contacts_upsert-contact",
-        "contacts_add-tags",
-        "contacts_remove-tags",
-        "contacts_get-all-tasks",
-        # Conversations
-        "conversations_search-conversation",
-        "conversations_get-messages",
-        "conversations_send-a-new-message",
-        # Opportunities
-        "opportunities_search-opportunity",
-        "opportunities_get-pipelines",
-        "opportunities_get-opportunity",
-        "opportunities_update-opportunity",
-        # Location
-        "locations_get-location",
-        "locations_get-custom-fields",
-    ])
-
