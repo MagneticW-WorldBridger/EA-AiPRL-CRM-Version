@@ -1,0 +1,21 @@
+# Nixpacks configuration for April Agent
+# Python 3.11 with proper pip installation
+
+[phases.setup]
+nixPkgs = ["python311", "python311Packages.pip"]
+
+[phases.install]
+cmds = [
+    "python -m venv /opt/venv",
+    "/opt/venv/bin/pip install --upgrade pip",
+    "/opt/venv/bin/pip install -r april_agent/requirements.txt"
+]
+
+[phases.build]
+cmds = []
+
+[start]
+cmd = "/opt/venv/bin/python -m april_agent.main"
+
+[variables]
+PYTHONUNBUFFERED = "1"
