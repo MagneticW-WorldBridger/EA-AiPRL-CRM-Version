@@ -48,8 +48,8 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService, DatabaseSessionService
 from google.genai import types
 
-from .agent import root_agent
-from .config import get_user_credentials, validate_user_credentials
+from agent import root_agent
+from config import get_user_credentials, validate_user_credentials
 
 # Load .env from this package's directory
 env_path = Path(__file__).parent / ".env"
