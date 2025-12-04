@@ -211,6 +211,7 @@ class GHLToolset(BaseToolset):
         pit_token: Optional[str] = None,
         location_id: Optional[str] = None,
         tool_filter: Optional[List[str]] = None,
+        tool_name_prefix: Optional[str] = None,
         timeout: float = DEFAULT_TIMEOUT,
     ):
         """
@@ -220,11 +221,14 @@ class GHLToolset(BaseToolset):
             pit_token: GHL Private Integration Token. Defaults to GHL_PIT_TOKEN env var.
             location_id: GHL Location ID. Defaults to GHL_LOCATION_ID env var.
             tool_filter: Optional list of tool names to include. None = all tools.
+            tool_name_prefix: Optional prefix for tool names.
             timeout: Request timeout in seconds.
         """
+        # Call parent __init__ to set tool_filter and tool_name_prefix
+        super().__init__(tool_filter=tool_filter, tool_name_prefix=tool_name_prefix)
+        
         self._pit_token = pit_token or os.getenv("GHL_PIT_TOKEN")
         self._location_id = location_id or os.getenv("GHL_LOCATION_ID")
-        self._tool_filter = tool_filter
         self._timeout = timeout
         self._tools_cache: Optional[List[BaseTool]] = None
         
@@ -256,9 +260,10 @@ class GHLToolset(BaseToolset):
         # Convert to ADK FunctionTools
         tools = []
         for config in tool_configs:
-            # Apply filter if specified
-            if self._tool_filter and config.name not in self._tool_filter:
-                continue
+            # Apply filter if specified (use parent's tool_filter)
+            if self.tool_filter:
+                if isinstance(self.tool_filter, list) and config.name not in self.tool_filter:
+                    continue
             
             # Create the tool function
             func = _create_ghl_tool_function(
