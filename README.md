@@ -400,15 +400,6 @@ April:
 4. Combines results in one beautiful response
 ```
 
----
-
-## 📞 Support
-
-**For AiPRL Employees Only**
-
-- **Slack:** #april-agent-support
-- **Email:** engineering@aiprlassist.com
-- **Issues:** Create in GitHub repo
 
 ---
 
