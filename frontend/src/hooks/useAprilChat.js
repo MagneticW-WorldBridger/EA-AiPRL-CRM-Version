@@ -6,7 +6,14 @@
  */
 import { useState, useRef, useCallback } from 'react'
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
+// In production: VITE_API_BASE must be set to the backend URL
+// In development: Falls back to /api which proxies to localhost:8001
+const API_BASE = import.meta.env.VITE_API_BASE || '/api'
+
+// Log API base for debugging
+if (import.meta.env.DEV) {
+  console.log('[April] API_BASE:', API_BASE)
+}
 
 const randomId = (prefix) => `${prefix}_${Math.random().toString(36).slice(2, 10)}`
 

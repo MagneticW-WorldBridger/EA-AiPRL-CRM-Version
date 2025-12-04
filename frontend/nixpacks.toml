@@ -1,0 +1,16 @@
+# Force Node 20 for Vite 7.x compatibility
+[phases.setup]
+nixPkgs = ["nodejs_20", "npm-10_x"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npx serve -s dist -l $PORT"
+
+[variables]
+NODE_ENV = "production"
+

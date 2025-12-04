@@ -68,14 +68,19 @@ SESSION_DB_URL = os.environ.get("APRIL_SESSION_DB_URL")
 
 # CORS origins
 ALLOWED_ORIGINS = [
+    # Local development
     "http://localhost:3000",
     "http://localhost:5173",
     "http://localhost:5174",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:5174",
-    # Add your production frontend URLs here
 ]
+
+# Add production frontend URLs via ALLOWED_ORIGINS environment variable
+# Example: ALLOWED_ORIGINS=https://my-frontend.up.railway.app,https://other.com
+EXTRA_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "").split(",")
+ALLOWED_ORIGINS.extend([o.strip() for o in EXTRA_ORIGINS if o.strip()])
 
 
 # =============================================================================

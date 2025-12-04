@@ -13,6 +13,18 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, '')
       }
     }
+  },
+  // Production build settings
+  build: {
+    outDir: 'dist',
+    sourcemap: false
+  },
+  // Define environment variables for client
+  define: {
+    // Fallback for production API URL if not set
+    'import.meta.env.VITE_API_BASE': JSON.stringify(
+      process.env.VITE_API_BASE || ''
+    )
   }
 })
 
