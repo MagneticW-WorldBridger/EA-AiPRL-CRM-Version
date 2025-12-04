@@ -10,13 +10,43 @@ Multi-Tenancy: Credentials loaded from environment variables.
 
 import os
 from pathlib import Path
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 env_path = Path(__file__).parent / ".env"
 load_dotenv(env_path)
 
 from google.adk.agents import Agent
+from google.adk.tools import google_search  # Built-in Gemini Google Search
+from google.adk.tools import FunctionTool
 from ghl_toolset import GHLToolset  # Proper ADK Toolset for GHL's hybrid MCP
+
+
+# Tool to get current date/time - agent can call this anytime
+def get_current_datetime() -> dict:
+    """Get the current date and time. Call this to know what day/time it is today."""
+    now = datetime.now(timezone.utc)
+    now_local = datetime.now()
+    
+    # Calculate week bounds (Monday to Sunday)
+    days_since_monday = now.weekday()
+    week_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = week_start.replace(day=now.day - days_since_monday)
+    week_end = week_start.replace(day=week_start.day + 6, hour=23, minute=59, second=59)
+    
+    return {
+        "today": now.strftime("%A, %B %d, %Y"),
+        "current_time_utc": now.strftime("%H:%M:%S UTC"),
+        "current_time_local": now_local.strftime("%H:%M:%S"),
+        "day_of_week": now.strftime("%A"),
+        "timestamp_now_ms": int(now.timestamp() * 1000),
+        "week_start_ms": int(week_start.timestamp() * 1000),
+        "week_end_ms": int(week_end.timestamp() * 1000),
+        "week_range": f"{week_start.strftime('%b %d')} - {week_end.strftime('%b %d, %Y')}"
+    }
+
+# Wrap as FunctionTool
+get_datetime_tool = FunctionTool(func=get_current_datetime)
 
 
 APRIL_INSTRUCTION = """
@@ -26,10 +56,18 @@ You are April, an executive assistant for AiPRL Assist. You help manage GoHighLe
 
 1. **NEVER ASK USERS FOR TECHNICAL DETAILS** - No milliseconds, no IDs, no parameters. YOU figure it out.
 2. **JUST DO IT** - When someone asks for something, DO IT. Don't explain what you need first.
-3. **ASSUME SMART DEFAULTS** - "this week" = Monday to Sunday of current week. "today" = today. Calculate it yourself.
+3. **ALWAYS KNOW THE DATE** - Call `get_current_datetime` FIRST if you need today's date or week timestamps.
 4. **BE CONCISE** - Users are busy. Give answers, not explanations of your process.
 
-## YOUR TOOLS
+## SPECIAL TOOLS
+
+### DATE/TIME
+- `get_current_datetime` - **CALL THIS FIRST** when you need to know today's date or calculate timestamps. Returns today's date, timestamps for "this week", and current time.
+
+### GOOGLE SEARCH  
+- `google_search` - Search the web for real-time information. Use sparingly for questions outside CRM data.
+
+## CRM TOOLS
 
 ### CONTACTS
 - `ghl_contacts_get_contacts` - Search by name/email/phone. Params: `query_query`, `query_limit`
@@ -58,18 +96,7 @@ You are April, an executive assistant for AiPRL Assist. You help manage GoHighLe
 **CALENDAR CONFIG:**
 - Calendar ID: `eGuHvbnvwrIhkgqOjl23` (always use this for `query_calendarId`)
 - Times must be in milliseconds since epoch (Unix timestamp × 1000)
-
-**TIMESTAMP REFERENCE (December 2025):**
-- Dec 1, 2025 00:00 UTC = 1733011200000
-- Dec 4, 2025 00:00 UTC = 1733270400000  
-- Dec 7, 2025 00:00 UTC = 1733529600000
-- Dec 8, 2025 00:00 UTC = 1733616000000
-- Dec 14, 2025 00:00 UTC = 1734134400000
-- Dec 31, 2025 23:59 UTC = 1735689599000
-
-When user says "this week" and today is Dec 4 (Thursday), use:
-- Start: 1733184000000 (Dec 2, Monday 00:00 UTC)
-- End: 1733788800000 (Dec 8, Sunday 23:59 UTC)
+- **Call `get_current_datetime` to get week_start_ms and week_end_ms** - don't guess!
 
 ### LOCATION
 - `ghl_locations_get_location` - Business info
@@ -84,8 +111,9 @@ When user says "this week" and today is Dec 4 (Thursday), use:
 ## HOW TO RESPOND
 
 **User: "Check my calendar this week"**
-→ IMMEDIATELY call `ghl_calendars_get_calendar_events` with query_calendarId="eGuHvbnvwrIhkgqOjl23", query_startTime=1733184000000, query_endTime=1733788800000
-→ Show results: "📅 This week you have: [events] or No meetings scheduled this week!"
+→ FIRST call `get_current_datetime` to get week_start_ms and week_end_ms
+→ THEN call `ghl_calendars_get_calendar_events` with query_calendarId="eGuHvbnvwrIhkgqOjl23", query_startTime={week_start_ms}, query_endTime={week_end_ms}
+→ Show results: "📅 This week (Mon-Sun) you have: [events] or No meetings scheduled!"
 
 **User: "Find John"**  
 → IMMEDIATELY call `ghl_contacts_get_contacts` with query_query="john"
@@ -126,7 +154,11 @@ ghl_toolset = GHLToolset()
 root_agent = Agent(
     name="april_agent",
     model="gemini-2.0-flash",
-    description="April - Executive assistant for GoHighLevel CRM with 36 integrated tools for contacts, conversations, pipelines, calendar, payments, blogs, emails, and social media.",
+    description="April - Executive assistant for GoHighLevel CRM with 36+ integrated tools for contacts, conversations, pipelines, calendar, payments, plus Google Search and real-time date awareness.",
     instruction=APRIL_INSTRUCTION,
-    tools=[ghl_toolset],
+    tools=[
+        get_datetime_tool,  # Always knows the date/time
+        google_search,      # Can search the web when needed
+        ghl_toolset,        # All 36 GHL CRM tools
+    ],
 )
