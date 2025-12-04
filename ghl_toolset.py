@@ -177,9 +177,18 @@ def _create_ghl_tool_function(
     
     async def tool_function(**kwargs) -> Dict[str, Any]:
         """Dynamically generated GHL tool function."""
+        # GHL requires certain parameters as strings (timestamps, IDs)
+        processed_args = {}
+        for key, value in kwargs.items():
+            # Convert numeric timestamps to strings (GHL API requirement)
+            if key in ('query_startTime', 'query_endTime') and isinstance(value, (int, float)):
+                processed_args[key] = str(int(value))
+            else:
+                processed_args[key] = value
+        
         return await _call_ghl_mcp(
             tool_name=tool_config.name,
-            arguments=kwargs,
+            arguments=processed_args,
             pit_token=pit_token,
             location_id=location_id,
         )
