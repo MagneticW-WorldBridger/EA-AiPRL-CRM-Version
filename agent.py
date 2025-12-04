@@ -16,7 +16,7 @@ env_path = Path(__file__).parent / ".env"
 load_dotenv(env_path)
 
 from google.adk.agents import Agent
-from .ghl_tools import GHL_TOOLS
+from ghl_tools import GHL_TOOLS  # Absolute import for Railway deployment
 
 
 APRIL_INSTRUCTION = """
